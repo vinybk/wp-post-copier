@@ -224,13 +224,81 @@ const args = process.argv.slice(2);
 let url = null;
 let listFile = 'posts.list';
 let configFile = 'wp-login.config';
+let invalidArgument = false;
 
 // Parse Arguments
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '-f' && args[i + 1]) configFile = args[i + 1];
-  if (args[i] === '-l' && args[i + 1]) listFile = args[i + 1];
-  if (args[i] === '-v') verbose = true;  // Enable verbose mode
-  if (args[i].startsWith('http')) url = args[i];
+  switch (args[i]) {
+    case '-h':
+    case '--help':
+      displayHelp();
+      process.exit(0);
+
+    case '-v':
+    case '--verbose':
+      verbose = true;
+      break;
+
+    case '-l':
+    case '--list':
+      if (args[i + 1]) {
+        listFile = args[i + 1];
+        i++;  // Skip next argument (already consumed)
+      } else {
+        console.error('❌ Error: Missing file path after --list.');
+        console.log('You can check the help menu at --help.');
+        process.exit(1);
+      }
+      break;
+
+    case '-c':
+    case '--config':
+      if (args[i + 1]) {
+        configFile = args[i + 1];
+        i++;
+      } else {
+        console.error('❌ Error: Missing config path after --config.');
+        console.log('You can check the help menu at --help.');
+        process.exit(1);
+      }
+      break;
+
+    default:
+      if (args[i].startsWith('http')) {
+        url = args[i];  // Assume URL is passed directly
+      } else {
+        console.error(`❌ Unknown argument "${args[i]}".`);
+        console.log('You can check the help menu at --help.');
+        invalidArgument = true;
+      }
+  }
+}
+
+// Exit if invalid arguments were found
+if (invalidArgument) {
+  process.exit(1);
+}
+
+// Help Menu Function
+function displayHelp() {
+  console.log(`
+  📰 WordPress Post Copier - Help Menu
+
+  Usage:
+    node wp-post-copier.js [options] <url>
+
+  Options:
+    -h, --help       Show this help message
+    -v, --verbose    Enable verbose mode
+    -l, --list       Specify a list file with URLs to process
+    -c, --config     Specify a custom config file
+
+  Examples:
+    node wp-post-copier.js https://example.com/post-url
+    node wp-post-copier.js -l posts.list
+    node wp-post-copier.js -c wp-custom.config
+    node wp-post-copier.js --verbose -l urls.txt
+  `);
 }
 
 // Check for Config File
