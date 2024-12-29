@@ -1,0 +1,46 @@
+# Node.js dependencies
+node_modules/
+package-lock.json
+
+# Environment and config files (sensitive data)
+wp-login.config
+.env
+
+# Logs
+post-log.txt
+error-log.txt
+*.log
+
+# Compiled output (if applicable)
+dist/
+build/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE specific files
+.vscode/
+.idea/
+*.iml
+
+# Temporary files
+*.tmp
+*.swp
+*.bak
+*.old
+
+# Lock files
+yarn.lock
+pnpm-lock.yaml
+
+# Backup files
+*.bak
+*.~*
+
+# Exclude lists of posts
+*.list
+
+# Ignore test files and temporary scripts
+*.test.js
+*.spec.js

@@ -1,0 +1,6 @@
+WP_SITE_URL = 'https://youramazing.blog/'
+WP_API_BASE = 'https://youramazing.blog/wp-json/wp/v2'
+WP_USER = 'your-wp-user'
+WP_APP_PASSWORD = 'your-wp-app-password'
+AUTHOR_ID = 1
+CATEGORY_ID = 1
