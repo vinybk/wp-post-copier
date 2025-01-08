@@ -65,8 +65,8 @@ function cleanText(content) {
     .replace(/â€”/g, '—')        // Em dash
     .replace(/â€¦/g, '...')      // Ellipsis
     .replace(/â€ /g, '')         // Miscellaneous artifacts
-    .replace(/[^\x00-\x7F]+/g, '');  // Remove non-ASCII characters (fallback)
-
+    .replace(/Â/g, '')         // Miscellaneous artifacts
+    
   // Log a simple message if any replacements were made
   if (verbose && originalContent !== cleanedContent) {
     console.log('🛠️ Found encoding issues, cleaning up weird characters.');
@@ -75,22 +75,23 @@ function cleanText(content) {
   return cleanedContent;
 }
 
-// 2. Replace WeDistribute Links with WP_SITE_URL Links
+// Replace WeDistribute Links with WP_SITE_URL Links (Sequential Processing)
 async function replaceWeDistributeLinks(content, config) {
   const $ = cheerio.load(content);
 
   const links = $('a[href*="wedistribute.org"]');
   if (!links.length) {
-    return content; // Return original content if no links to replace
+    return content;  // Return original content if no links to replace
   }
 
-  for (let i = 0; i < links.length; i++) {
-    const link = $(links[i]);
-    const originalHref = link.attr('href');
+  for (const link of links) {
+    const $link = $(link);
+    const originalHref = $link.attr('href');
 
     if (originalHref) {
-      // Extract the slug from the URL
-      const slug = originalHref.split('/').filter(Boolean).pop();
+      // Parse the URL to extract the path without query params
+      const urlObj = new URL(originalHref);
+      const slug = urlObj.pathname.split('/').filter(Boolean).pop();
       const wpUrl = `${config.WP_SITE_URL}/${slug}`;  // Avoid double /posts
 
       try {
@@ -98,12 +99,12 @@ async function replaceWeDistributeLinks(content, config) {
         const response = await axios.get(wpUrl);
         if (response.status === 200) {
           // Replace the link if the post exists
-          link.attr('href', wpUrl);
+          $link.attr('href', wpUrl);
           logVerbose(`🔗 Replaced link: ${originalHref} -> ${wpUrl}`);
         }
       } catch (error) {
         if (error.response && error.response.status === 404) {
-          logVerbose(`⚠️ No matching post found for: ${originalHref}`);
+          logVerbose(`⚠️ No matching post found for: ${originalHref} (Checked: ${wpUrl})`);
         } else {
           logError(`❌ Error checking link (${slug}): ${error.message}`);
         }
@@ -115,6 +116,8 @@ async function replaceWeDistributeLinks(content, config) {
 }
 
 
+
+
 // 2. Extract Post Details (Title, Content, Image)
 async function extractPostDetails(originalPost,postUrl) {
   const $ = cheerio.load(originalPost);
@@ -123,8 +126,11 @@ async function extractPostDetails(originalPost,postUrl) {
   $('div.simpletoc.wp-block-simpletoc-toc').remove();
 
   // Remove Share Section
- $('div.shareopenly').remove();
+  $('div.shareopenly').remove();
 
+  // Remove Share Section
+  $('div.sharedaddy').remove();
+  
   // Extract Tags
   const tags = [];
   $('div.post-tags-modern a[rel="tag"]').each((_, element) => {
@@ -237,12 +243,57 @@ async function uploadImageToWordPress(imageUrl, config) {
       return null;
     }
 }
+
+// Helper: Get or Create Tags in WordPress
+async function getOrCreateTags(tags, config) {
+  const tagIds = [];
+
+  for (const tag of tags) {
+    try {
+      // Search for existing tag
+      const response = await axios.get(`${config.WP_API_BASE}/tags`, {
+        params: { search: tag },
+        auth: {
+          username: config.WP_USER,
+          password: config.WP_APP_PASSWORD,
+        },
+      });
+
+      if (response.data.length > 0) {
+        const existingTagId = response.data[0].id;
+        logVerbose(`✅ Found existing tag: ${tag} (ID: ${existingTagId})`);
+        tagIds.push(existingTagId);
+      } else {
+        // Create tag if it doesn't exist
+        const createResponse = await axios.post(`${config.WP_API_BASE}/tags`, {
+          name: tag,
+        }, {
+          auth: {
+            username: config.WP_USER,
+            password: config.WP_APP_PASSWORD,
+          },
+        });
+
+        const newTagId = createResponse.data.id;
+        logVerbose(`🆕 Created new tag: ${tag} (ID: ${newTagId})`);
+        tagIds.push(newTagId);
+      }
+    } catch (error) {
+      logError(`❌ Error creating/fetching tag: ${tag} - ${error.message}`);
+    }
+  }
+
+  return tagIds;
+}
+
   
 // Global Counter for Created Posts
 let postsCreated = 0;
 
 // 4. Create the Post in WordPress (with logging for date issues)
 async function createPost(title, content, featuredImageId, slug, postDate, tags, config) {
+  const tagIds = await getOrCreateTags(tags, config);  // Ensure we pass IDs
+
   const postData = {
     title,
     content,
@@ -253,7 +304,7 @@ async function createPost(title, content, featuredImageId, slug, postDate, tags,
     date: postDate,  // Set post date to match original
     excerpt: 'Syndicated post from We Distribute.',
     slug: slug,
-    tags,
+    tags: tagIds,  // Pass array of tag IDs, not names
   };
 
   try {
@@ -352,7 +403,7 @@ async function processPost(url, config) {
   const originalPost = await fetchOriginalPost(url);
   if (!originalPost) return;
 
-  const extracted = extractPostDetails(originalPost, url);
+  const extracted = await extractPostDetails(originalPost, url);
   if (!extracted) {
     logError(`❌ Post content not found for URL.`);
     return;
