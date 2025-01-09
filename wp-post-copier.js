@@ -60,13 +60,14 @@ function cleanText(content) {
     .replace(/âœ”/g, '✔')       // Checkmarks
     .replace(/â€™/g, "'")        // Apostrophe
     .replace(/â€œ/g, '“')       // Opening double quote
-    .replace(/â€/g, '”')       // Closing double quote    
+    .replace(/â€/g, '”')       // Closing double quote
     .replace(/â€¢/g, '•')        // Bullet point
     .replace(/â€“/g, '-')        // En dash
     .replace(/â€”/g, '—')        // Em dash
     .replace(/â€¦/g, '...')      // Ellipsis
+    .replace(/â€Š/g, ' ')        // Thin space
     .replace(/â€ /g, '')         // Miscellaneous artifacts
-    .replace(/Â/g, '')         // Miscellaneous artifacts
+    .replace(/Â/g, '');          // Miscellaneous artifacts
     
   // Log a simple message if any replacements were made
   if (verbose && originalContent !== cleanedContent) {
