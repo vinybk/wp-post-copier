@@ -59,7 +59,8 @@ function cleanText(content) {
     .replace(/âž¡|â†’/g, '->')   // Arrow symbols
     .replace(/âœ”/g, '✔')       // Checkmarks
     .replace(/â€™/g, "'")        // Apostrophe
-    .replace(/â€œ|â€/g, '"')    // Double quotes
+    .replace(/â€œ/g, '“')       // Opening double quote
+    .replace(/â€/g, '”')       // Closing double quote    
     .replace(/â€¢/g, '•')        // Bullet point
     .replace(/â€“/g, '-')        // En dash
     .replace(/â€”/g, '—')        // Em dash
